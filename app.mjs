@@ -22,20 +22,6 @@ const VERSION = 'v0.1';
 const API_ROOT = `/api/${VERSION}`;
 
 //
-// app and router
-//
-const app = new Koa();
-const router = new Router();
-
-//
-// middleware
-//
-app.use(compress());
-app.use(serve('./public'));
-app.use(morgan('combined', { stream: access_log}));
-app.use(koabody());
-
-//
 // utilities
 //
 
@@ -62,88 +48,114 @@ const return_json = (ctx, doc) => {
 };
 
 //
-// books
+// make router and app
 //
-router.get(API_ROOT + '/books', async (ctx) => {
-  let req = ctx.request;
-  let query = {};
-
-  if (req.query.title) {
-    query['title'] = re_or_str(req.query.title);
-  }
-  if (req.query.author) {
-    query['authors.full_name'] = re_or_str(req.query.author);
-  }
-  if (req.query.after) {
-    query['release_date'] = {'$gte': new Date(req.query.after)};
-  }
-
-  let options = {
-    sort: {
-      release_date: -1
-    },
-    fields: {
-      _id: 0
-    }
-  };
-
-  if (req.query.fields) {
-    req.query.fields.split(',').forEach((a) => {
-      options.fields[a] = 1;
-    });
-  }
-  if (req.query.limit) {
-    options.limit = parseInt(req.query.limit);
-  } else {
-    options.limit = DEFAULT_LIMIT;
-  }
-  if (req.query.skip) {
-    options.skip = parseInt(req.query.skip);
-  }
-
-  let docs = await app.my.books.find(query, options).toArray();
-  if(docs) {
-    return_json(ctx, docs);
-  } else {
-    ctx.body = '';
-    ctx.status = 404;
-  }
-});
-
-router.get(API_ROOT + '/books/:book_id', async (ctx) => {
-  let book_id = parseInt(ctx.params.book_id);
-
-  let doc = await app.my.books.findOne({book_id: book_id});
-  if (doc) {
-    return_json(ctx, doc);
-  } else {
-    ctx.body = '';
-    ctx.status = 404;
-  }
-});
-
-//
-//
-//
-
-const run_server = async () => {
+const connect_db = async () => {
   let MongoClient = mongodb.MongoClient;
   let db = await MongoClient.connect(mongo_url);
-  app.my = {};
-  app.my.db = db;
-  app.my.books = db.collection('books');
-  app.my.authors = db.collection('authors');
-  app.my.persons = db.collection('persons');
-  app.my.workers = db.collection('workers');
+  let my = {};
+  my.db = db;
+  my.books = db.collection('books');
+  my.authors = db.collection('authors');
+  my.persons = db.collection('persons');
+  my.workers = db.collection('workers');
 
   //redis_url = process.env.REDIS_URL || 'redis://127.0.0.1:6379'
   //  app.my.rc = redis.createClient(redis_url, {return_buffers: true})
+
+  return my;
 };
 
-run_server();
+const make_router = (app) => {
+  const router = new Router();
+  
+  //
+  // books
+  //
+  router.get(API_ROOT + '/books', async (ctx) => {
+    let req = ctx.request;
+    let query = {};
 
-app
-  .use(router.routes())
-  .use(router.allowedMethods());
+    if (req.query.title) {
+      query['title'] = re_or_str(req.query.title);
+    }
+    if (req.query.author) {
+      query['authors.full_name'] = re_or_str(req.query.author);
+    }
+    if (req.query.after) {
+      query['release_date'] = {'$gte': new Date(req.query.after)};
+    }
 
-app.listen(process.env.PORT || 3000);
+    let options = {
+      sort: {
+        release_date: -1
+      },
+      fields: {
+        _id: 0
+      }
+    };
+
+    if (req.query.fields) {
+      req.query.fields.split(',').forEach((a) => {
+        options.fields[a] = 1;
+      });
+    }
+    if (req.query.limit) {
+      options.limit = parseInt(req.query.limit);
+    } else {
+      options.limit = DEFAULT_LIMIT;
+    }
+    if (req.query.skip) {
+      options.skip = parseInt(req.query.skip);
+    }
+
+    let docs = await app.my.books.find(query, options).toArray();
+    if(docs) {
+      return_json(ctx, docs);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
+  router.get(API_ROOT + '/books/:book_id', async (ctx) => {
+    let book_id = parseInt(ctx.params.book_id);
+
+    let doc = await app.my.books.findOne({book_id: book_id});
+    if (doc) {
+      return_json(ctx, doc);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
+  return router;
+};
+
+const make_app = async () => {
+  const app = new Koa();
+  //
+  // middleware
+  //
+  app.use(compress());
+  app.use(serve('./public'));
+  app.use(morgan('combined', { stream: access_log}));
+  app.use(koabody());
+
+  app.my = await connect_db();
+
+  const router = make_router(app);
+  app
+    .use(router.routes())
+    .use(router.allowedMethods());
+
+  return app;
+};
+
+const run_app = async () => {
+  const app = await make_app();
+  app.listen(process.env.PORT || 5000);
+};
+
+run_app();
