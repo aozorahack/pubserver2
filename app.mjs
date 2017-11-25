@@ -9,8 +9,7 @@ import Koa from 'koa';
 
 import mongodb from 'mongodb';
 
-const accessLogStream = fs.createWriteStream('./access.log',
-                                             { flags: 'a' });
+const access_log= fs.createWriteStream('./access.log', { flags: 'a' });
 
 const mongodb_credential = process.env.AOZORA_MONGODB_CREDENTIAL || '';
 const mongodb_host = process.env.AOZORA_MONGODB_HOST || 'localhost';
@@ -33,7 +32,7 @@ const router = new Router();
 //
 app.use(compress());
 app.use(serve('./public'));
-app.use(morgan('combined', { stream: accessLogStream }));
+app.use(morgan('combined', { stream: access_log}));
 app.use(koabody());
 
 //
@@ -42,7 +41,7 @@ app.use(koabody());
 
 const re_or_str = (src) => {
   if (src[0] === '/' && src.slice(-1) === '/') {
-    return {"$in": [new RegExp(src.slice(1, -1))]};
+    return {'$in': [new RegExp(src.slice(1, -1))]};
   } else {
     return src;
   }
@@ -65,7 +64,7 @@ const return_json = (ctx, doc) => {
 //
 // books
 //
-router.get(API_ROOT + '/books', async (ctx, next) => {
+router.get(API_ROOT + '/books', async (ctx) => {
   let req = ctx.request;
   let query = {};
 
@@ -76,7 +75,7 @@ router.get(API_ROOT + '/books', async (ctx, next) => {
     query['authors.full_name'] = re_or_str(req.query.author);
   }
   if (req.query.after) {
-    query['release_date'] = {"$gte": new Date(req.query.after)};
+    query['release_date'] = {'$gte': new Date(req.query.after)};
   }
 
   let options = {
@@ -103,7 +102,6 @@ router.get(API_ROOT + '/books', async (ctx, next) => {
   }
 
   let docs = await app.my.books.find(query, options).toArray();
-  // console.log(docs);
   if(docs) {
     return_json(ctx, docs);
   } else {
@@ -112,9 +110,8 @@ router.get(API_ROOT + '/books', async (ctx, next) => {
   }
 });
 
-router.get(API_ROOT + '/books/:book_id', async (ctx, next) => {
+router.get(API_ROOT + '/books/:book_id', async (ctx) => {
   let book_id = parseInt(ctx.params.book_id);
-  console.log(book_id);
 
   let doc = await app.my.books.findOne({book_id: book_id});
   if (doc) {
@@ -139,11 +136,9 @@ const run_server = async () => {
   app.my.persons = db.collection('persons');
   app.my.workers = db.collection('workers');
 
-  let port = process.env.PORT || 5000;
-
-  //redis_url = process.env.REDIS_URL || "redis://127.0.0.1:6379"
+  //redis_url = process.env.REDIS_URL || 'redis://127.0.0.1:6379'
   //  app.my.rc = redis.createClient(redis_url, {return_buffers: true})
-}
+};
 
 run_server();
 

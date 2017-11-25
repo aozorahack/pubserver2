@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "description": "Aozora API server with ES2017 + Koa.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "eslint app.mjs"
   },
   "author": "Kenichi Sato <ksato9700@gmail.com>",
   "license": "MIT",
@@ -15,5 +16,8 @@
     "koa-router": "7.3.0",
     "koa-static": "4.0.2",
     "mongodb": "2.2.33"
+  },
+  "devDependencies": {
+    "eslint": "4.11.0"
   }
 }
