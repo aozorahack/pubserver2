@@ -19,6 +19,9 @@ const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port
 
 const DEFAULT_LIMIT = 100;
 
+const VERSION = 'v0.1';
+const API_ROOT = `/api/${VERSION}`;
+
 //
 // app and router
 //
@@ -62,7 +65,7 @@ const return_json = (ctx, doc) => {
 //
 // books
 //
-router.get('/books', async (ctx, next) => {
+router.get(API_ROOT + '/books', async (ctx, next) => {
   let req = ctx.request;
   let query = {};
 
@@ -109,7 +112,7 @@ router.get('/books', async (ctx, next) => {
   }
 });
 
-router.get('/books/:book_id', async (ctx, next) => {
+router.get(API_ROOT + '/books/:book_id', async (ctx, next) => {
   let book_id = parseInt(ctx.params.book_id);
   console.log(book_id);
 
