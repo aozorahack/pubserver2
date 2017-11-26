@@ -159,3 +159,5 @@ const run_app = async () => {
 };
 
 run_app();
+
+exports.make_app = make_app;
