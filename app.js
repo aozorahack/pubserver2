@@ -1,13 +1,13 @@
-import fs from 'fs';
-import crypto from 'crypto';
-import serve from 'koa-static';
-import morgan from 'koa-morgan';
-import koabody from 'koa-body';
-import compress from 'koa-compress';
-import Router from 'koa-router';
-import Koa from 'koa';
+const fs = require('fs');
+const crypto = require('crypto');
+const serve = require('koa-static');
+const morgan = require('koa-morgan');
+const koabody = require('koa-body');
+const compress = require('koa-compress');
+const Router = require('koa-router');
+const Koa = require('koa');
 
-import mongodb from 'mongodb';
+const mongodb = require('mongodb');
 
 const access_log= fs.createWriteStream('./access.log', { flags: 'a' });
 
@@ -120,7 +120,7 @@ const make_router = (app) => {
 
   router.get(API_ROOT + '/books/:book_id', async (ctx) => {
     let book_id = parseInt(ctx.params.book_id);
-
+    console.log(`/books/${book_id}`);
     let doc = await app.my.books.findOne({book_id: book_id});
     if (doc) {
       return_json(ctx, doc);
