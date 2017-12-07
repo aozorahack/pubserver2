@@ -1,2 +1,1 @@
-# web: node --experimental-modules app.js
-web: node app.js
+web: node index.js

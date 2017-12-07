@@ -23,7 +23,7 @@
     "mongodb": "2.2.33"
   },
   "devDependencies": {
-    "ava": "0.23.0",
+    "ava": "0.24.0",
     "eslint": "4.11.0",
     "supertest": "3.0.0"
   }

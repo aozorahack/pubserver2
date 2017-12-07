@@ -80,7 +80,13 @@ const make_router = (app) => {
       query['title'] = re_or_str(req.query.title);
     }
     if (req.query.author) {
-      query['authors.full_name'] = re_or_str(req.query.author);
+      let person = await app.my.persons.findOne (
+        {$where: `var author = "${req.query.author}"; this.last_name + this.first_name == author || this.last_name == author || this.first_name == author`});
+      if (!person) {
+        ctx.status=404;
+        return;
+      }
+      query['authors.person_id'] = person.person_id;
     }
     if (req.query.after) {
       query['release_date'] = {'$gte': new Date(req.query.after)};
@@ -152,12 +158,5 @@ const make_app = async () => {
 
   return app;
 };
-
-const run_app = async () => {
-  const app = await make_app();
-  app.listen(process.env.PORT || 5000);
-};
-
-run_app();
 
 exports.make_app = make_app;

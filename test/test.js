@@ -31,7 +31,7 @@ test('app:single_book', async t => {
   t.is(res.body.base_book_1_publisher, '角川文庫、角川書店');
   t.is(res.body.base_book_1_1st_edition, '1950（昭和25）年10月20日');
   t.is(res.body.base_book_1_edition_input, '1985（昭和60）年11月10日改版38版');
-  t.is(res.body.base_book_1_eidtion_proofing, '1985（昭和60）年11月10日改版38版');
+  t.is(res.body.base_book_1_edition_proofing, '1985（昭和60）年11月10日改版38版');
   t.is(res.body.input, 'j.utiyama');
   t.is(res.body.proofing, 'かとうかおり');
   t.is(res.body.text_url, 'http://www.aozora.gr.jp/cards/000879/files/123_ruby_1199.zip');
@@ -54,7 +54,7 @@ test('app:single_book_etag', async t => {
 
   var res = await server
       .get('/api/v0.1/books/123')
-      .set('If-None-Match', '"71a8c1720fe84eb38ba96dc92321a6a841640fdc"');
+      .set('If-None-Match', '"9740c687b92e8a6e99b60d9dd8a3f1d72ebe89fc"');
   
   t.is(res.status, 304);
   t.is(res.header['content-type'], undefined);
@@ -105,4 +105,42 @@ test('app:multiple_books_title', async t => {
   t.is(res.body[1].book_id, 5);
   t.is(res.body[1].title, 'あいびき');
 
+});
+
+test('app:multiple_books_author', async t => {
+  t.plan(5);
+
+  var res = await server
+      .get('/api/v0.1/books')
+      .query({'author': '素木しづ'});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 12);
+  t.is(res.body[0].book_id, 48628);
+  t.is(res.body[0].title, '追憶');
+});
+
+test('app:multiple_books_author_first_last_only', async t => {
+  t.plan(10);
+
+  let res = await server
+      .get('/api/v0.1/books')
+      .query({'author': '芥川'});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 100);
+  t.is(res.body[0].book_id, 56820);
+  t.is(res.body[0].title, '仏蘭西文学と僕');
+
+  res = await server
+      .get('/api/v0.1/books')
+      .query({'author': '独歩'});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 45);
+  t.is(res.body[0].book_id, 56412);
+  t.is(res.body[0].title, '日の出');
 });
