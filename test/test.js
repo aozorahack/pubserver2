@@ -199,3 +199,20 @@ test('app:books_limit_skip', async t => {
   t.is(res.body[0].release_date, '2017-02-12T00:00:00.000Z');
 
 });
+test('app:books_limit_skip', async t => {
+  t.plan(6);
+
+  let res = await server
+      .get('/api/v0.1/books')
+      .query({'title':'/月/', limit: 50, sort: '{"release_date": 1}',
+              after: '2009-01-01'});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 50);
+
+  t.is(res.body[0].book_id, 49545);
+  t.is(res.body[0].title, '正月の思い出');
+  t.is(res.body[0].release_date, '2009-01-10T00:00:00.000Z');
+  
+});
