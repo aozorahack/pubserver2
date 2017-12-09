@@ -158,7 +158,44 @@ test('app:books_fields', async t => {
   t.is(res.body[0].book_id, undefined);
   t.is(res.body[0].title, '鼻');
   t.is(res.body[0].release_date, '1999-01-26T00:00:00.000Z');
-  t.is(res.body[0].book_id, undefined);
+  t.is(res.body[1].book_id, undefined);
   t.is(res.body[1].title, '鼻');
   t.is(res.body[1].release_date, '1997-11-04T00:00:00.000Z');
+});
+
+test('app:books_limit_skip', async t => {
+  t.plan(15);
+
+  let res = await server
+      .get('/api/v0.1/books')
+      .query({'title':'/花/', limit: 200});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 185);
+
+  res = await server
+    .get('/api/v0.1/books')
+    .query({'title':'/花/', limit: 20, skip:100, sort: '{"release_date": 1}'});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 20);
+
+  t.is(res.body[0].book_id, 48246);
+  t.is(res.body[0].title, '白い花');
+  t.is(res.body[0].release_date, '2008-07-15T00:00:00.000Z');
+
+  res = await server
+    .get('/api/v0.1/books')
+    .query({'title':'/花/', limit: 10, skip:180, sort: '{"release_date": 1}'});
+  
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.true(res.body.length >= 5 && res.body.length <= 10);
+
+  t.is(res.body[0].book_id, 55753);
+  t.is(res.body[0].title, '雪と花火余言');
+  t.is(res.body[0].release_date, '2017-02-12T00:00:00.000Z');
+
 });

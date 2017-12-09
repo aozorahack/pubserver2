@@ -93,13 +93,16 @@ const make_router = (app) => {
     }
 
     let options = {
-      sort: {
-        release_date: -1
-      },
       fields: {
         _id: 0
       }
     };
+
+    if (req.query.sort) {
+      options.sort = JSON.parse(req.query.sort);
+    } else {
+      options.sort = {release_date: -1};
+    }
 
     if (req.query.fields) {
       req.query.fields.forEach((a) => {
