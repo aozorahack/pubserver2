@@ -144,3 +144,21 @@ test('app:multiple_books_author_first_last_only', async t => {
   t.is(res.body[0].book_id, 56412);
   t.is(res.body[0].title, '日の出');
 });
+
+test('app:books_fields', async t => {
+  t.plan(9);
+
+  let res = await server
+      .get('/api/v0.1/books')
+      .query({'title':'鼻', 'fields': ['title', 'release_date']});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 2);
+  t.is(res.body[0].book_id, undefined);
+  t.is(res.body[0].title, '鼻');
+  t.is(res.body[0].release_date, '1999-01-26T00:00:00.000Z');
+  t.is(res.body[0].book_id, undefined);
+  t.is(res.body[1].title, '鼻');
+  t.is(res.body[1].release_date, '1997-11-04T00:00:00.000Z');
+});

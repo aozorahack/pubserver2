@@ -102,7 +102,7 @@ const make_router = (app) => {
     };
 
     if (req.query.fields) {
-      req.query.fields.split(',').forEach((a) => {
+      req.query.fields.forEach((a) => {
         options.fields[a] = 1;
       });
     }
