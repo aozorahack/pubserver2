@@ -276,3 +276,23 @@ test('app:books_content_html', async t => {
   t.is(res.status, 304);
   t.is(res.text.length, 0);
 });
+
+test('app:persons', async t => {
+  t.plan(5);
+
+  const path = '/api/v0.1/persons';
+  let res = await server
+      .get(path);
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 988);
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag)
+    .query({format: 'html'});
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});

@@ -310,6 +310,53 @@ const make_router = (app) => {
     }
   });
 
+  //
+  // persons
+  //
+  router.get('/persons', async (ctx) => {
+    let req = ctx.request;
+    let query = {};
+
+    if (req.query.name) {
+      query['$where'] = `var name = "${req.query.name}"; this.last_name + this.first_name == name || this.last_name == name || this.first_name == name`;
+    }
+
+    let options = {
+      fields: {
+        _id: 0
+      }
+    };
+
+/*
+    if (req.query.sort) {
+      options.sort = JSON.parse(req.query.sort);
+    } else {
+      options.sort = {release_date: -1};
+    }
+
+    if (req.query.fields) {
+      req.query.fields.forEach((a) => {
+        options.fields[a] = 1;
+      });
+    }
+    if (req.query.limit) {
+      options.limit = parseInt(req.query.limit);
+    } else {
+      options.limit = DEFAULT_LIMIT;
+    }
+    if (req.query.skip) {
+      options.skip = parseInt(req.query.skip);
+    }
+*/
+    let docs = await app.my.persons.find(query, options).toArray();
+    if(docs) {
+      return_json(ctx, docs);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
   return router;
 };
 
