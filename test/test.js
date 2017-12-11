@@ -10,7 +10,7 @@ test.before(async t => {
 });
 
 test('app:single_book', async t => {
-  t.plan(33);
+  t.plan(35);
   var res = await server
       .get('/api/v0.1/books/123');
 
@@ -47,14 +47,10 @@ test('app:single_book', async t => {
   t.is(res.body.authors[0].person_id, 879);
   t.is(res.body.authors[0].last_name, '芥川');
   t.is(res.body.authors[0].first_name, '竜之介');
-});
 
-test('app:single_book_etag', async t => {
-  t.plan(2);
-
-  var res = await server
-      .get('/api/v0.1/books/123')
-      .set('If-None-Match', '"9740c687b92e8a6e99b60d9dd8a3f1d72ebe89fc"');
+  res = await server
+    .get('/api/v0.1/books/123')
+    .set('If-None-Match', res.header.etag);
 
   t.is(res.status, 304);
   t.is(res.header['content-type'], undefined);
@@ -333,6 +329,36 @@ test('app:persons_name', async t => {
     .get(path)
     .set('If-None-Match', res.header.etag)
     .query({'name': '鈴木梅太郎'});
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});
+
+test('app:persons_name_by_id', async t => {
+  t.plan(16);
+
+  const path = '/api/v0.1/persons/1234';
+  let res = await server
+      .get(path);
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.person_id, 1234);
+  t.is(res.body.last_name, '愛知');
+  t.is(res.body.first_name, '敬一');
+  t.is(res.body.last_name_yomi, 'あいち');
+  t.is(res.body.first_name_yomi, 'けいいち');
+  t.is(res.body.last_name_sort, 'あいち');
+  t.is(res.body.first_name_sort, 'けいいち');
+  t.is(res.body.last_name_roman, 'Aichi');
+  t.is(res.body.first_name_roman, 'Keiichi');
+  t.is(res.body.date_of_birth, '1880-07-25T00:00:00.000Z');
+  t.is(res.body.date_of_death, '1923-06-23T00:00:00.000Z');
+  t.is(res.body.author_copyright, false);
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag);
 
   t.is(res.status, 304);
   t.is(res.text.length, 0);

@@ -248,7 +248,12 @@ const make_router = (app) => {
       next();
       return;
     }
-    let doc = await app.my.books.findOne({book_id: book_id});
+    let options = {
+      fields: {
+        _id: 0
+      }
+    };
+    let doc = await app.my.books.findOne({book_id: book_id}, options);
     if (doc) {
       return_json(ctx, doc);
     } else {
@@ -326,27 +331,6 @@ const make_router = (app) => {
       }
     };
 
-/*
-    if (req.query.sort) {
-      options.sort = JSON.parse(req.query.sort);
-    } else {
-      options.sort = {release_date: -1};
-    }
-
-    if (req.query.fields) {
-      req.query.fields.forEach((a) => {
-        options.fields[a] = 1;
-      });
-    }
-    if (req.query.limit) {
-      options.limit = parseInt(req.query.limit);
-    } else {
-      options.limit = DEFAULT_LIMIT;
-    }
-    if (req.query.skip) {
-      options.skip = parseInt(req.query.skip);
-    }
-*/
     let docs = await app.my.persons.find(query, options).toArray();
     if(docs) {
       return_json(ctx, docs);
@@ -356,8 +340,35 @@ const make_router = (app) => {
     }
   });
 
+  router.get('/persons/:person_id', async (ctx, next) => {
+    console.log(decodeURIComponent(ctx.req.url));
+
+    let person_id = parseInt(ctx.params.person_id);
+    if (!person_id) {
+      next();
+      return;
+    }
+    let options = {
+      fields: {
+        _id: 0
+      }
+    };
+    let doc = await app.my.persons.findOne({person_id: person_id}, options);
+    if (doc) {
+      return_json(ctx, doc);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
   return router;
 };
+
+
+//
+// application
+//
 
 const make_app = async () => {
   const app = new Koa();
