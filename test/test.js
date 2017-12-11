@@ -13,7 +13,7 @@ test('app:single_book', async t => {
   t.plan(33);
   var res = await server
       .get('/api/v0.1/books/123');
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.book_id, 123);
@@ -55,7 +55,7 @@ test('app:single_book_etag', async t => {
   var res = await server
       .get('/api/v0.1/books/123')
       .set('If-None-Match', '"9740c687b92e8a6e99b60d9dd8a3f1d72ebe89fc"');
-  
+
   t.is(res.status, 304);
   t.is(res.header['content-type'], undefined);
 });
@@ -65,7 +65,7 @@ test('app:single_book_notfuond', async t => {
 
   var res = await server
       .get('/api/v0.1/books/12345');
-  
+
   t.is(res.status, 404);
 });
 
@@ -74,7 +74,7 @@ test('app:multiple_books', async t => {
 
   var res = await server
       .get('/api/v0.1/books');
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 100);
@@ -86,7 +86,7 @@ test('app:multiple_books_title', async t => {
   var res = await server
       .get('/api/v0.1/books')
       .query({'title': '吾輩は猫である'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 1);
@@ -96,7 +96,7 @@ test('app:multiple_books_title', async t => {
   var res = await server
       .get('/api/v0.1/books')
       .query({'title': 'あいびき'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 2);
@@ -113,7 +113,7 @@ test('app:multiple_books_author', async t => {
   var res = await server
       .get('/api/v0.1/books')
       .query({'author': '素木しづ'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 12);
@@ -127,7 +127,7 @@ test('app:multiple_books_author_first_last_only', async t => {
   let res = await server
       .get('/api/v0.1/books')
       .query({'author': '芥川'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 100);
@@ -137,7 +137,7 @@ test('app:multiple_books_author_first_last_only', async t => {
   res = await server
       .get('/api/v0.1/books')
       .query({'author': '独歩'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 45);
@@ -169,7 +169,7 @@ test('app:books_limit_skip', async t => {
   let res = await server
       .get('/api/v0.1/books')
       .query({'title':'/花/', limit: 200});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 185);
@@ -177,7 +177,7 @@ test('app:books_limit_skip', async t => {
   res = await server
     .get('/api/v0.1/books')
     .query({'title':'/花/', limit: 20, skip:100, sort: '{"release_date": 1}'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 20);
@@ -189,7 +189,7 @@ test('app:books_limit_skip', async t => {
   res = await server
     .get('/api/v0.1/books')
     .query({'title':'/花/', limit: 10, skip:180, sort: '{"release_date": 1}'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.true(res.body.length >= 5 && res.body.length <= 10);
@@ -206,7 +206,7 @@ test('app:books_limit_skip', async t => {
       .get('/api/v0.1/books')
       .query({'title':'/月/', limit: 50, sort: '{"release_date": 1}',
               after: '2009-01-01'});
-  
+
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 50);
@@ -214,5 +214,24 @@ test('app:books_limit_skip', async t => {
   t.is(res.body[0].book_id, 49545);
   t.is(res.body[0].title, '正月の思い出');
   t.is(res.body[0].release_date, '2009-01-10T00:00:00.000Z');
-  
+
+});
+
+test('app:books_card', async t => {
+  t.plan(5);
+
+  const path = '/api/v0.1/books/123/card';
+  let res = await server
+      .get(path);
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'text/html; charset=utf-8');
+  t.is(res.text.length, 8111);
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag);
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
 });

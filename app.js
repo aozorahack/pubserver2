@@ -1,6 +1,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
-const serve = require('koa-static');
+const zlib = require('zlib');
+const serve = require('koa-static-server');
 const morgan = require('koa-morgan');
 const koabody = require('koa-body');
 const compress = require('koa-compress');
@@ -8,6 +9,9 @@ const Router = require('koa-router');
 const Koa = require('koa');
 
 const mongodb = require('mongodb');
+const redis = require('redis');
+const rp = require('request-promise');
+const iconv = require('iconv-lite');
 
 const access_log= fs.createWriteStream('./access.log', { flags: 'a' });
 
@@ -15,11 +19,28 @@ const mongodb_credential = process.env.AOZORA_MONGODB_CREDENTIAL || '';
 const mongodb_host = process.env.AOZORA_MONGODB_HOST || 'localhost';
 const mongodb_port = process.env.AOZORA_MONGODB_PORT || '27017';
 const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port}/aozora`;
+const redis_url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+
+const encodings = {
+  card: 'utf-8',
+  html: 'shift_jis'
+};
 
 const DEFAULT_LIMIT = 100;
+const DATA_LIFETIME = 3600;
 
 const VERSION = 'v0.1';
 const API_ROOT = `/api/${VERSION}`;
+
+//
+// promisify
+//
+const promisify = require('util').promisify;
+const zlib_deflate = promisify(zlib.deflate);
+const zlib_inflate = promisify(zlib.inflate);
+
+redis.RedisClient.prototype.setex = promisify(redis.RedisClient.prototype.setex);
+redis.RedisClient.prototype.get = promisify(redis.RedisClient.prototype.get);
 
 //
 // utilities
@@ -35,7 +56,7 @@ const re_or_str = (src) => {
 
 const return_json = (ctx, doc) => {
   let body = JSON.stringify(doc);
-  ctx.response.etag = crypto.createHash('sha1').update(body).digest('hex');
+  ctx.response.etag = gen_etag(body);
   ctx.status = 200;
 
   if (ctx.fresh) {
@@ -45,6 +66,81 @@ const return_json = (ctx, doc) => {
     ctx.type = 'application/json; charset=utf-8';
     ctx.body = body;
   }
+};
+
+const upload_content_data = async (rc, key, data) => {
+  let zdata = await zlib_deflate(data);
+  let etag = gen_etag(zdata);
+  await rc.setex(key, DATA_LIFETIME, zdata);
+  await rc.setex(key + ':etag', DATA_LIFETIME, etag);
+  return {text: data, etag: etag};
+};
+
+const add_ogp = (body, title, author)=> {
+  const ogp_headers =
+    ['<head prefix="og: http://ogp.me/ns#">',
+     '<meta name="twitter:card" content="summary" />',
+     '<meta property="og:type" content="book">',
+     '<meta property="og:image" content="http://www.aozora.gr.jp/images/top_logo.png">',
+     '<meta property="og:image:type" content="image/png">',
+     '<meta property="og:image:width" content="100">',
+     '<meta property="og:image:height" content="100">',
+     '<meta property="og:description" content="...">',
+     "<meta property=\"og:title\" content=\"#{title}(#{author})\""].join('\n');
+
+  return body.replace(/<head>/, ogp_headers);
+};
+
+const rel_to_abs_path = (body, ext) => {
+  if (ext == 'card') {
+    return body
+      .replace(/\.\.\/\.\.\//g, 'http://www.aozora.gr.jp/')
+      .replace(/\.\.\//g, 'http://www.aozora.gr.jp/cards/');
+  } else { // ext == 'html'
+    return body
+      .replace(/\.\.\/\.\.\//g, 'http://www.aozora.gr.jp/cards/');
+  }
+};
+
+const get_ogpcard = async (my, book_id, ext) => {
+  let doc = await my.books.findOne({book_id: book_id},
+                                   {card_url: 1, html_url: 1,
+                                    title:1, authors: 1});
+  let ext_url = doc[`${ext}_url`];
+  try {
+    let body = await rp.get(ext_url,
+                            { encoding: null,
+                              headers: {
+                                'User-Agent': 'Mozilla/5.0',
+                                'Accept': '*/*'
+                              }});
+    let encoding = encodings[ext];
+    let bodystr = iconv.decode(body, encoding);
+    bodystr = add_ogp(bodystr, doc.title, doc.authors[0].full_name);
+    bodystr = rel_to_abs_path(bodystr, ext);
+    return new Promise((resolve) => {
+      resolve(iconv.encode(bodystr, encodings[ext]));
+    });
+  } catch (error) {
+    console.error(error);
+  }
+};
+
+const get_from_cache = async (my, book_id, get_file, ext) => {
+  const key = `${ext}${book_id}`;
+  const result = await my.rc.get(key);
+  if (result) {
+    const data = await zlib_inflate(result);
+    return {text: data, etag: await my.rc.get(key+':etag')};
+  } else {
+    const data = await get_file(my, book_id, ext);
+    const res = await upload_content_data(my.rc, key, data);
+    return {text: res.text, etag: res.etag};
+  }
+};
+
+const gen_etag = (data) => {
+  return crypto.createHash('sha1').update(data).digest('hex');
 };
 
 //
@@ -60,19 +156,18 @@ const connect_db = async () => {
   my.persons = db.collection('persons');
   my.workers = db.collection('workers');
 
-  //redis_url = process.env.REDIS_URL || 'redis://127.0.0.1:6379'
-  //  app.my.rc = redis.createClient(redis_url, {return_buffers: true})
+  my.rc = redis.createClient(redis_url, {return_buffers: true});
 
   return my;
 };
 
 const make_router = (app) => {
-  const router = new Router();
+  const router = new Router({prefix: API_ROOT});
   
   //
   // books
   //
-  router.get(API_ROOT + '/books', async (ctx) => {
+  router.get('/books', async (ctx) => {
     let req = ctx.request;
     let query = {};
 
@@ -127,13 +222,40 @@ const make_router = (app) => {
     }
   });
 
-  router.get(API_ROOT + '/books/:book_id', async (ctx) => {
+  router.get('/books/:book_id', async (ctx, next) => {
     let book_id = parseInt(ctx.params.book_id);
+    if (!book_id) {
+      next();
+      return;
+    }
     console.log(`/books/${book_id}`);
     let doc = await app.my.books.findOne({book_id: book_id});
     if (doc) {
       return_json(ctx, doc);
     } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
+  router.get('/books/:book_id/card', async (ctx, next) => {
+    let book_id = parseInt(ctx.params.book_id);
+    console.log(`/books/${book_id}/card`);
+
+    try {
+      let res = await get_from_cache(app.my, book_id, get_ogpcard, 'card');
+
+      ctx.response.etag = res.etag;
+      ctx.status = 200;
+
+      if (ctx.fresh) {
+        ctx.status = 304;
+        ctx.body = null;
+      } else {
+        ctx.response.type = 'text/html';
+        ctx.body = res.text;
+      }
+    } catch (error) {
       ctx.body = '';
       ctx.status = 404;
     }
@@ -148,7 +270,6 @@ const make_app = async () => {
   // middleware
   //
   app.use(compress());
-  app.use(serve('./public'));
   app.use(morgan('combined', { stream: access_log}));
   app.use(koabody());
 
@@ -159,6 +280,7 @@ const make_app = async () => {
     .use(router.routes())
     .use(router.allowedMethods());
 
+  app.use(serve({rootDir: './public', rootPath: API_ROOT}));
   return app;
 };
 
