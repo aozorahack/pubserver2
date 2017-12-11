@@ -235,3 +235,23 @@ test('app:books_card', async t => {
   t.is(res.status, 304);
   t.is(res.text.length, 0);
 });
+
+test('app:books_content_text', async t => {
+  t.plan(5);
+
+  const path = '/api/v0.1/books/123/content';
+  let res = await server
+      .get(path)
+      .query({format: 'txt'});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'text/plain; charset=shift_jis');
+  t.is(res.text.length, 7757);
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag);
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});

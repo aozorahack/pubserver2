@@ -12,6 +12,7 @@ const mongodb = require('mongodb');
 const redis = require('redis');
 const rp = require('request-promise');
 const iconv = require('iconv-lite');
+const JSZip = require('jszip');
 
 const access_log= fs.createWriteStream('./access.log', { flags: 'a' });
 
@@ -24,6 +25,10 @@ const redis_url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
 const encodings = {
   card: 'utf-8',
   html: 'shift_jis'
+};
+
+const content_type = {
+  'txt': 'text/plain; charset=shift_jis'
 };
 
 const DEFAULT_LIMIT = 100;
@@ -102,28 +107,40 @@ const rel_to_abs_path = (body, ext) => {
   }
 };
 
+const get_zipped = async (my, book_id, ext) => {
+  console.log(book_id, ext);
+  let doc = await my.books.findOne({book_id: book_id}, {text_url: 1});
+
+  console.log(doc.length);
+  let body = await rp.get(doc.text_url,
+                          { encoding: null,
+                            headers: {
+                              'User-Agent': 'Mozilla/5.0',
+                              'Accept': '*/*'
+                            }});
+  console.log(body.length);
+  const zip = await JSZip.loadAsync(body);
+  console.log(zip);
+  const key = Object.keys(zip.files)[0]; // assuming zip has only one text entry
+  return zip.file(key).async('nodebuffer');
+};
+
 const get_ogpcard = async (my, book_id, ext) => {
   let doc = await my.books.findOne({book_id: book_id},
                                    {card_url: 1, html_url: 1,
                                     title:1, authors: 1});
   let ext_url = doc[`${ext}_url`];
-  try {
-    let body = await rp.get(ext_url,
-                            { encoding: null,
-                              headers: {
-                                'User-Agent': 'Mozilla/5.0',
-                                'Accept': '*/*'
-                              }});
-    let encoding = encodings[ext];
-    let bodystr = iconv.decode(body, encoding);
-    bodystr = add_ogp(bodystr, doc.title, doc.authors[0].full_name);
-    bodystr = rel_to_abs_path(bodystr, ext);
-    return new Promise((resolve) => {
-      resolve(iconv.encode(bodystr, encodings[ext]));
-    });
-  } catch (error) {
-    console.error(error);
-  }
+  let body = await rp.get(ext_url,
+                          { encoding: null,
+                            headers: {
+                              'User-Agent': 'Mozilla/5.0',
+                              'Accept': '*/*'
+                            }});
+  let encoding = encodings[ext];
+  let bodystr = iconv.decode(body, encoding);
+  bodystr = add_ogp(bodystr, doc.title, doc.authors[0].full_name);
+  bodystr = rel_to_abs_path(bodystr, ext);
+  return iconv.encode(bodystr, encodings[ext]);
 };
 
 const get_from_cache = async (my, book_id, get_file, ext) => {
@@ -134,8 +151,7 @@ const get_from_cache = async (my, book_id, get_file, ext) => {
     return {text: data, etag: await my.rc.get(key+':etag')};
   } else {
     const data = await get_file(my, book_id, ext);
-    const res = await upload_content_data(my.rc, key, data);
-    return {text: res.text, etag: res.etag};
+    return await upload_content_data(my.rc, key, data);
   }
 };
 
@@ -163,7 +179,7 @@ const connect_db = async () => {
 
 const make_router = (app) => {
   const router = new Router({prefix: API_ROOT});
-  
+
   //
   // books
   //
@@ -245,8 +261,8 @@ const make_router = (app) => {
     try {
       let res = await get_from_cache(app.my, book_id, get_ogpcard, 'card');
 
-      ctx.response.etag = res.etag;
       ctx.status = 200;
+      ctx.response.etag = res.etag.toString('UTF-8');
 
       if (ctx.fresh) {
         ctx.status = 304;
@@ -256,8 +272,37 @@ const make_router = (app) => {
         ctx.body = res.text;
       }
     } catch (error) {
+      console.error(error);
       ctx.body = '';
       ctx.status = 404;
+    }
+  });
+
+  router.get('/books/:book_id/content', async (ctx, next) => {
+    let book_id = parseInt(ctx.params.book_id);
+    console.log(`/books/${book_id}/content?format=${ctx.query.format}`);
+
+    const ext = ctx.query.format || 'txt';
+    if (ext == 'html') {
+    } else { // ext == 'txt'
+      try {
+        let res = await get_from_cache(app.my, book_id, get_zipped, ext);
+
+        ctx.status = 200;
+        ctx.response.etag = res.etag.toString('UTF-8');
+
+        if (ctx.fresh) {
+          ctx.status = 304;
+          ctx.body = null;
+        } else {
+          ctx.response.type = content_type[ext] || 'application/octet-stream';
+          ctx.body = res.text;
+        }
+      } catch (error) {
+        console.error(error);
+        ctx.body = '';
+        ctx.status = 404;
+      }
     }
   });
 
