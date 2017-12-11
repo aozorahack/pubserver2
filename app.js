@@ -104,19 +104,15 @@ const rel_to_abs_path = (body, ext) => {
 };
 
 const get_zipped = async (my, book_id, ext) => {
-  console.log(book_id, ext);
   let doc = await my.books.findOne({book_id: book_id}, {text_url: 1});
 
-  console.log(doc.length);
   let body = await rp.get(doc.text_url,
                           { encoding: null,
                             headers: {
                               'User-Agent': 'Mozilla/5.0',
                               'Accept': '*/*'
                             }});
-  console.log(body.length);
   const zip = await JSZip.loadAsync(body);
-  console.log(zip);
   const key = Object.keys(zip.files)[0]; // assuming zip has only one text entry
   return zip.file(key).async('nodebuffer');
 };
@@ -245,12 +241,13 @@ const make_router = (app) => {
   });
 
   router.get('/books/:book_id', async (ctx, next) => {
+    console.log(decodeURIComponent(ctx.req.url));
+
     let book_id = parseInt(ctx.params.book_id);
     if (!book_id) {
       next();
       return;
     }
-    console.log(`/books/${book_id}`);
     let doc = await app.my.books.findOne({book_id: book_id});
     if (doc) {
       return_json(ctx, doc);
@@ -261,9 +258,9 @@ const make_router = (app) => {
   });
 
   router.get('/books/:book_id/card', async (ctx, next) => {
-    let book_id = parseInt(ctx.params.book_id);
-    console.log(`/books/${book_id}/card`);
+    console.log(decodeURIComponent(ctx.req.url));
 
+    let book_id = parseInt(ctx.params.book_id);
     try {
       let res = await get_from_cache(app.my, book_id, get_ogpcard, 'card');
 
@@ -285,9 +282,9 @@ const make_router = (app) => {
   });
 
   router.get('/books/:book_id/content', async (ctx, next) => {
-    let book_id = parseInt(ctx.params.book_id);
-    console.log(`/books/${book_id}/content?format=${ctx.query.format}`);
+    console.log(decodeURIComponent(ctx.req.url));
 
+    let book_id = parseInt(ctx.params.book_id);
     const ext = ctx.query.format || 'txt';
     try {
       const get_file = get_file_method[ext];
@@ -314,6 +311,8 @@ const make_router = (app) => {
   // persons
   //
   router.get('/persons', async (ctx) => {
+    console.log(decodeURIComponent(ctx.req.url));
+
     let req = ctx.request;
     let query = {};
 

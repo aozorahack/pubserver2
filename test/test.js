@@ -296,3 +296,44 @@ test('app:persons', async t => {
   t.is(res.status, 304);
   t.is(res.text.length, 0);
 });
+
+test('app:persons_name', async t => {
+  t.plan(20);
+
+  const path = '/api/v0.1/persons';
+  let res = await server
+      .get(path)
+      .query({'name': '鈴木'});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 6);
+
+  res = await server
+      .get(path)
+      .query({'name': '鈴木梅太郎'});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 1);
+  t.is(res.body[0].person_id, 957);
+  t.is(res.body[0].last_name, '鈴木');
+  t.is(res.body[0].first_name, '梅太郎');
+  t.is(res.body[0].last_name_yomi, 'すずき');
+  t.is(res.body[0].first_name_yomi, 'うめたろう');
+  t.is(res.body[0].last_name_sort, 'すすき');
+  t.is(res.body[0].first_name_sort, 'うめたろう');
+  t.is(res.body[0].last_name_roman, 'Suzuki');
+  t.is(res.body[0].first_name_roman, 'Umetaro');
+  t.is(res.body[0].date_of_birth, '1874-04-07T00:00:00.000Z');
+  t.is(res.body[0].date_of_death, '1943-09-20T00:00:00.000Z');
+  t.is(res.body[0].author_copyright, false );
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag)
+    .query({'name': '鈴木梅太郎'});
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});
