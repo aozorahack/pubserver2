@@ -27,10 +27,6 @@ const encodings = {
   html: 'shift_jis'
 };
 
-const content_type = {
-  'txt': 'text/plain; charset=shift_jis'
-};
-
 const DEFAULT_LIMIT = 100;
 const DATA_LIFETIME = 3600;
 
@@ -177,6 +173,16 @@ const connect_db = async () => {
   return my;
 };
 
+const content_type = {
+  'txt': 'text/plain; charset=shift_jis',
+  'html': 'text/html; charset=shift_jis'
+};
+
+const get_file_method = {
+  'txt': get_zipped,
+  'html': get_ogpcard
+}
+
 const make_router = (app) => {
   const router = new Router({prefix: API_ROOT});
 
@@ -262,7 +268,7 @@ const make_router = (app) => {
       let res = await get_from_cache(app.my, book_id, get_ogpcard, 'card');
 
       ctx.status = 200;
-      ctx.response.etag = res.etag.toString('UTF-8');
+      ctx.response.etag = res.etag;
 
       if (ctx.fresh) {
         ctx.status = 304;
@@ -283,26 +289,24 @@ const make_router = (app) => {
     console.log(`/books/${book_id}/content?format=${ctx.query.format}`);
 
     const ext = ctx.query.format || 'txt';
-    if (ext == 'html') {
-    } else { // ext == 'txt'
-      try {
-        let res = await get_from_cache(app.my, book_id, get_zipped, ext);
+    try {
+      const get_file = get_file_method[ext];
+      const res = await get_from_cache(app.my, book_id, get_file, ext);
 
-        ctx.status = 200;
-        ctx.response.etag = res.etag.toString('UTF-8');
+      ctx.status = 200;
+      ctx.response.etag = res.etag;
 
-        if (ctx.fresh) {
-          ctx.status = 304;
-          ctx.body = null;
-        } else {
-          ctx.response.type = content_type[ext] || 'application/octet-stream';
-          ctx.body = res.text;
-        }
-      } catch (error) {
-        console.error(error);
-        ctx.body = '';
-        ctx.status = 404;
+      if (ctx.fresh) {
+        ctx.status = 304;
+        ctx.body = null;
+      } else {
+        ctx.response.type = content_type[ext] || 'application/octet-stream';
+        ctx.body = res.text;
       }
+    } catch (error) {
+      console.error(error);
+      ctx.body = '';
+      ctx.status = 404;
     }
   });
 

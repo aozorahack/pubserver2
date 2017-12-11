@@ -255,3 +255,24 @@ test('app:books_content_text', async t => {
   t.is(res.status, 304);
   t.is(res.text.length, 0);
 });
+
+test('app:books_content_html', async t => {
+  t.plan(5);
+
+  const path = '/api/v0.1/books/123/content';
+  let res = await server
+      .get(path)
+      .query({format: 'html'});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'text/html; charset=shift_jis');
+  t.is(res.text.length, 14332);
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag)
+    .query({format: 'html'});
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});
