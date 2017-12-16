@@ -282,12 +282,11 @@ test('app:persons', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
-  t.is(res.body.length, 988);
+  t.true(res.body.length >= 998);
 
   res = await server
     .get(path)
-    .set('If-None-Match', res.header.etag)
-    .query({format: 'html'});
+    .set('If-None-Match', res.header.etag);
 
   t.is(res.status, 304);
   t.is(res.text.length, 0);
@@ -355,6 +354,78 @@ test('app:persons_name_by_id', async t => {
   t.is(res.body.date_of_birth, '1880-07-25T00:00:00.000Z');
   t.is(res.body.date_of_death, '1923-06-23T00:00:00.000Z');
   t.is(res.body.author_copyright, false);
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag);
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});
+
+test('app:workers', async t => {
+  t.plan(7);
+
+  const path = '/api/v0.1/workers';
+  let res = await server
+      .get(path);
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.true(res.body.length >= 1003);
+  t.true(typeof res.body[0].id == 'number');
+  t.true(typeof res.body[0].name == 'string');
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag);
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});
+
+test('app:workers_name', async t => {
+  t.plan(10);
+
+  const path = '/api/v0.1/workers';
+  let res = await server
+      .get(path)
+      .query({'name': '/高橋/'});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.true(res.body.length >= 10);
+
+  res = await server
+      .get(path)
+      .query({'name': 'しりかげる'});
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 1);
+  t.is(res.body[0].id, 925);
+  t.is(res.body[0].name, 'しりかげる');
+
+  res = await server
+    .get(path)
+    .set('If-None-Match', res.header.etag)
+    .query({'name': 'しりかげる'});
+
+  t.is(res.status, 304);
+  t.is(res.text.length, 0);
+});
+
+test('app:workers_name_by_id', async t => {
+  t.plan(6);
+
+  const path = '/api/v0.1/workers/1021';
+  let res = await server
+      .get(path);
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.id, 1021);
+  t.is(res.body.name, '高橋征義');
 
   res = await server
     .get(path)

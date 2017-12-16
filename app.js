@@ -190,7 +190,7 @@ const make_router = (app) => {
     let query = {};
 
     if (req.query.title) {
-      query['title'] = re_or_str(req.query.title);
+      query.title = re_or_str(req.query.title);
     }
     if (req.query.author) {
       let person = await app.my.persons.findOne (
@@ -202,7 +202,7 @@ const make_router = (app) => {
       query['authors.person_id'] = person.person_id;
     }
     if (req.query.after) {
-      query['release_date'] = {'$gte': new Date(req.query.after)};
+      query.release_date = {'$gte': new Date(req.query.after)};
     }
 
     let options = {
@@ -354,6 +354,56 @@ const make_router = (app) => {
       }
     };
     let doc = await app.my.persons.findOne({person_id: person_id}, options);
+    if (doc) {
+      return_json(ctx, doc);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
+  //
+  // workers
+  //
+  router.get('/workers', async (ctx) => {
+    console.log(decodeURIComponent(ctx.req.url));
+
+    let req = ctx.request;
+    let query = {};
+
+    if (req.query.name) {
+      query.name = re_or_str(req.query.name);
+    }
+
+    let options = {
+      fields: {
+        _id: 0
+      }
+    };
+
+    let docs = await app.my.workers.find(query, options).toArray();
+    if(docs) {
+      return_json(ctx, docs);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
+  router.get('/workers/:worker_id', async (ctx, next) => {
+    console.log(decodeURIComponent(ctx.req.url));
+
+    let worker_id = parseInt(ctx.params.worker_id);
+    if (!worker_id) {
+      next();
+      return;
+    }
+    let options = {
+      fields: {
+        _id: 0
+      }
+    };
+    let doc = await app.my.workers.findOne({id: worker_id}, options);
     if (doc) {
       return_json(ctx, doc);
     } else {
