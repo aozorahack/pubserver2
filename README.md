@@ -1,7 +1,7 @@
 # pubserver2
 Prototype of Aozora-bunko package management server prototype
 
-青空文庫の作品の情報を配布するためのAPIサーバのプロトタイプです。CoffeeScriptで記述していた Pubserver
+青空文庫の作品の情報を配布するためのAPIサーバのプロトタイプです。CoffeeScriptで記述していた [Pubserver](https://github.com/aozorahack/pubserver)をES2017で実装しなおしています。
 
 ## 動かし方
 
