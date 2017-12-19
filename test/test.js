@@ -168,7 +168,7 @@ test('app:books_limit_skip', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
-  t.is(res.body.length, 185);
+  t.true(res.body.length >= 186);
 
   res = await server
     .get('/api/v0.1/books')

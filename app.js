@@ -8,6 +8,8 @@ const compress = require('koa-compress');
 const Router = require('koa-router');
 const Koa = require('koa');
 
+require('dotenv').config();
+
 const mongodb = require('mongodb');
 const redis = require('redis');
 const rp = require('request-promise');
@@ -20,7 +22,7 @@ const mongodb_credential = process.env.AOZORA_MONGODB_CREDENTIAL || '';
 const mongodb_host = process.env.AOZORA_MONGODB_HOST || 'localhost';
 const mongodb_port = process.env.AOZORA_MONGODB_PORT || '27017';
 const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port}/aozora`;
-const redis_url = process.env.REDIS_URL || 'redis://127.0.0.1:6379';
+const redis_url = process.env.AOZORA_REDIS_URL || 'redis://127.0.0.1:6379';
 
 const encodings = {
   card: 'utf-8',
