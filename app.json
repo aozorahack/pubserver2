@@ -1,0 +1,32 @@
+{
+  "name": "pubserver2",
+  "scripts": {
+  },
+  "env": {
+    "AOZORA_MONGODB_CREDENTIAL": {
+      "required": true
+    },
+    "AOZORA_MONGODB_HOST": {
+      "required": true
+    },
+    "AOZORA_MONGODB_PORT": {
+      "required": true
+    },
+    "AOZORA_REDIS_URL": {
+      "required": true
+    }
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "addons": [
+    "heroku-redis"
+  ],
+  "buildpacks": [
+    {
+      "url": "heroku/nodejs"
+    }
+  ]
+}
