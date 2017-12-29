@@ -222,7 +222,7 @@ test('app:books_card', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'text/html; charset=utf-8');
-  t.is(res.text.length, 8111);
+  t.is(res.text.length, 8103);
 
   res = await server
     .get(path)
@@ -262,7 +262,7 @@ test('app:books_content_html', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'text/html; charset=shift_jis');
-  t.is(res.text.length, 14332);
+  t.is(res.text.length, 14328);
 
   res = await server
     .get(path)

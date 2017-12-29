@@ -120,21 +120,22 @@ const get_zipped = async (my, book_id, _) => {
 };
 
 const get_ogpcard = async (my, book_id, ext) => {
-  let doc = await my.books.findOne({book_id: book_id},
-                                   {card_url: 1, html_url: 1,
-                                    title:1, authors: 1});
-  let ext_url = doc[`${ext}_url`];
-  let body = await rp.get(ext_url,
-                          { encoding: null,
-                            headers: {
-                              'User-Agent': 'Mozilla/5.0',
-                              'Accept': '*/*'
-                            }});
-  let encoding = encodings[ext];
-  let bodystr = iconv.decode(body, encoding);
-  bodystr = add_ogp(bodystr, doc.title, doc.authors[0].full_name);
-  bodystr = rel_to_abs_path(bodystr, ext);
-  return iconv.encode(bodystr, encodings[ext]);
+  const doc = await my.books.findOne({book_id: book_id},
+                                     {card_url: 1, html_url: 1,
+                                      title:1, authors: 1});
+  const ext_url = doc[`${ext}_url`];
+  const body = await rp.get(ext_url,
+                            { encoding: null,
+                              headers: {
+                                'User-Agent': 'Mozilla/5.0',
+                                'Accept': '*/*'
+                              }});
+  const encoding = encodings[ext];
+  const author_name = doc.authors[0].last_name + doc.authors[0].first_name;
+  return iconv.encode(rel_to_abs_path(add_ogp(iconv.decode(body, encoding),
+                                              doc.title, author_name),
+                                      ext),
+                      encoding);
 };
 
 const get_from_cache = async (my, book_id, get_file, ext) => {
