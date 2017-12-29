@@ -51,7 +51,6 @@ redis.RedisClient.prototype.get = promisify(redis.RedisClient.prototype.get);
 
 const re_or_str = (src) => {
   if (src[0] === '/' && src.slice(-1) === '/') {
-//    return {'$in': [new RegExp(src.slice(1, -1))]};
     return new RegExp(src.slice(1, -1));
   } else {
     return src;
@@ -82,15 +81,15 @@ const upload_content_data = async (rc, key, data) => {
 
 const add_ogp = (body, title, author)=> {
   const ogp_headers =
-    ['<head prefix="og: http://ogp.me/ns#">',
-     '<meta name="twitter:card" content="summary" />',
-     '<meta property="og:type" content="book">',
-     '<meta property="og:image" content="http://www.aozora.gr.jp/images/top_logo.png">',
-     '<meta property="og:image:type" content="image/png">',
-     '<meta property="og:image:width" content="100">',
-     '<meta property="og:image:height" content="100">',
-     '<meta property="og:description" content="...">',
-     "<meta property=\"og:title\" content=\"#{title}(#{author})\""].join('\n');
+        ['<head prefix="og: http://ogp.me/ns#">',
+         '<meta name="twitter:card" content="summary" />',
+         '<meta property="og:type" content="book">',
+         '<meta property="og:image" content="http://www.aozora.gr.jp/images/top_logo.png">',
+         '<meta property="og:image:type" content="image/png">',
+         '<meta property="og:image:width" content="100">',
+         '<meta property="og:image:height" content="100">',
+         '<meta property="og:description" content="...">',
+         `<meta property="og:title" content="${title}(${author})"`].join('\n');
 
   return body.replace(/<head>/, ogp_headers);
 };
@@ -106,7 +105,7 @@ const rel_to_abs_path = (body, ext) => {
   }
 };
 
-const get_zipped = async (my, book_id, ext) => {
+const get_zipped = async (my, book_id, _) => {
   let doc = await my.books.findOne({book_id: book_id}, {text_url: 1});
 
   let body = await rp.get(doc.text_url,
@@ -179,7 +178,7 @@ const content_type = {
 const get_file_method = {
   'txt': get_zipped,
   'html': get_ogpcard
-}
+};
 
 const make_router = (app) => {
   const router = new Router({prefix: API_ROOT});
@@ -243,7 +242,7 @@ const make_router = (app) => {
   });
 
   router.get('/books/:book_id', async (ctx, next) => {
-    console.log(decodeURIComponent(ctx.req.url));
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let book_id = parseInt(ctx.params.book_id);
     if (!book_id) {
@@ -264,8 +263,8 @@ const make_router = (app) => {
     }
   });
 
-  router.get('/books/:book_id/card', async (ctx, next) => {
-    console.log(decodeURIComponent(ctx.req.url));
+  router.get('/books/:book_id/card', async (ctx) => {
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let book_id = parseInt(ctx.params.book_id);
     try {
@@ -288,8 +287,8 @@ const make_router = (app) => {
     }
   });
 
-  router.get('/books/:book_id/content', async (ctx, next) => {
-    console.log(decodeURIComponent(ctx.req.url));
+  router.get('/books/:book_id/content', async (ctx) => {
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let book_id = parseInt(ctx.params.book_id);
     const ext = ctx.query.format || 'txt';
@@ -318,7 +317,7 @@ const make_router = (app) => {
   // persons
   //
   router.get('/persons', async (ctx) => {
-    console.log(decodeURIComponent(ctx.req.url));
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let req = ctx.request;
     let query = {};
@@ -343,7 +342,7 @@ const make_router = (app) => {
   });
 
   router.get('/persons/:person_id', async (ctx, next) => {
-    console.log(decodeURIComponent(ctx.req.url));
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let person_id = parseInt(ctx.params.person_id);
     if (!person_id) {
@@ -368,7 +367,7 @@ const make_router = (app) => {
   // workers
   //
   router.get('/workers', async (ctx) => {
-    console.log(decodeURIComponent(ctx.req.url));
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let req = ctx.request;
     let query = {};
@@ -393,7 +392,7 @@ const make_router = (app) => {
   });
 
   router.get('/workers/:worker_id', async (ctx, next) => {
-    console.log(decodeURIComponent(ctx.req.url));
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
     let worker_id = parseInt(ctx.params.worker_id);
     if (!worker_id) {

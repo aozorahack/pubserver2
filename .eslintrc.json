@@ -11,7 +11,14 @@
   "rules": {
     "indent": [
       "error",
-      2
+      2,
+      {
+        "ArrayExpression": "first",
+        "ObjectExpression": "first",
+        "CallExpression": {
+          "arguments": "first"
+        }
+      }
     ],
     "linebreak-style": [
       "error",
@@ -27,6 +34,14 @@
     ],
     "require-await": [
       "error"
+    ],
+    "no-unused-vars": [
+      "error",
+      {"argsIgnorePattern": "^_" }
+    ],
+    "no-console": [
+      "error",
+      {"allow": ["warn", "error"]}
     ]
   }
 }
