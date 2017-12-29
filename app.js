@@ -51,7 +51,8 @@ redis.RedisClient.prototype.get = promisify(redis.RedisClient.prototype.get);
 
 const re_or_str = (src) => {
   if (src[0] === '/' && src.slice(-1) === '/') {
-    return {'$in': [new RegExp(src.slice(1, -1))]};
+//    return {'$in': [new RegExp(src.slice(1, -1))]};
+    return new RegExp(src.slice(1, -1));
   } else {
     return src;
   }
@@ -74,8 +75,8 @@ const return_json = (ctx, doc) => {
 const upload_content_data = async (rc, key, data) => {
   let zdata = await zlib_deflate(data);
   let etag = gen_etag(zdata);
-  await rc.setex(key, DATA_LIFETIME, zdata);
-  await rc.setex(key + ':etag', DATA_LIFETIME, etag);
+  await rc.setex(key + ':d', DATA_LIFETIME, zdata);
+  await rc.setex(key, DATA_LIFETIME, etag);
   return {text: data, etag: etag};
 };
 
@@ -139,10 +140,9 @@ const get_ogpcard = async (my, book_id, ext) => {
 
 const get_from_cache = async (my, book_id, get_file, ext) => {
   const key = `${ext}${book_id}`;
-  const result = await my.rc.get(key);
-  if (result) {
-    const data = await zlib_inflate(result);
-    return {text: data, etag: await my.rc.get(key+':etag')};
+  const etag = await my.rc.get(key);
+  if (etag) {
+    return {text: await zlib_inflate(await my.rc.get(key+':d')), etag: etag};
   } else {
     const data = await get_file(my, book_id, ext);
     return await upload_content_data(my.rc, key, data);
