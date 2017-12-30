@@ -151,10 +151,10 @@ test('app:books_fields', async t => {
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 2);
-  t.is(res.body[0].book_id, undefined);
+  t.is(res.body[0].book_id, 372);
   t.is(res.body[0].title, '鼻');
   t.is(res.body[0].release_date, '1999-01-26T00:00:00.000Z');
-  t.is(res.body[1].book_id, undefined);
+  t.is(res.body[1].book_id, 42);
   t.is(res.body[1].title, '鼻');
   t.is(res.body[1].release_date, '1997-11-04T00:00:00.000Z');
 });

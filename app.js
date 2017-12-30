@@ -8,9 +8,10 @@ const compress = require('koa-compress');
 const Router = require('koa-router');
 const Koa = require('koa');
 
+const db = require('./db_mongo');
+
 require('dotenv').config();
 
-const mongodb = require('mongodb');
 const redis = require('redis');
 const rp = require('request-promise');
 const iconv = require('iconv-lite');
@@ -18,10 +19,6 @@ const JSZip = require('jszip');
 
 const access_log= fs.createWriteStream('./access.log', { flags: 'a' });
 
-const mongodb_credential = process.env.AOZORA_MONGODB_CREDENTIAL || '';
-const mongodb_host = process.env.AOZORA_MONGODB_HOST || 'localhost';
-const mongodb_port = process.env.AOZORA_MONGODB_PORT || '27017';
-const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port}/aozora`;
 const redis_url = process.env.AOZORA_REDIS_URL || 'redis://127.0.0.1:6379';
 
 const encodings = {
@@ -45,6 +42,8 @@ const zlib_inflate = promisify(zlib.inflate);
 redis.RedisClient.prototype.setex = promisify(redis.RedisClient.prototype.setex);
 redis.RedisClient.prototype.get = promisify(redis.RedisClient.prototype.get);
 
+const rc = redis.createClient(redis_url, {return_buffers: true});
+
 //
 // utilities
 //
@@ -58,7 +57,7 @@ const re_or_str = (src) => {
 };
 
 const return_json = (ctx, doc) => {
-  let body = JSON.stringify(doc);
+  const body = JSON.stringify(doc);
   ctx.response.etag = gen_etag(body);
   ctx.status = 200;
 
@@ -71,9 +70,9 @@ const return_json = (ctx, doc) => {
   }
 };
 
-const upload_content_data = async (rc, key, data) => {
-  let zdata = await zlib_deflate(data);
-  let etag = gen_etag(zdata);
+const upload_content_data = async (key, data) => {
+  const zdata = await zlib_deflate(data);
+  const etag = gen_etag(zdata);
   await rc.setex(key + ':d', DATA_LIFETIME, zdata);
   await rc.setex(key, DATA_LIFETIME, etag);
   return {text: data, etag: etag};
@@ -105,10 +104,10 @@ const rel_to_abs_path = (body, ext) => {
   }
 };
 
-const get_zipped = async (my, book_id, _) => {
-  let doc = await my.books.findOne({book_id: book_id}, {text_url: 1});
+const get_zipped = async (db, book_id, _) => {
+  const doc = await db.find_one_book(book_id, ['text_url']);
 
-  let body = await rp.get(doc.text_url,
+  const body = await rp.get(doc.text_url,
                           { encoding: null,
                             headers: {
                               'User-Agent': 'Mozilla/5.0',
@@ -119,8 +118,8 @@ const get_zipped = async (my, book_id, _) => {
   return zip.file(key).async('nodebuffer');
 };
 
-const get_ogpcard = async (my, book_id, ext) => {
-  const doc = await my.books.findOne({book_id: book_id},
+const get_ogpcard = async (db, book_id, ext) => {
+  const doc = await db.find_one_book(book_id,
                                      {card_url: 1, html_url: 1,
                                       title:1, authors: 1});
   const ext_url = doc[`${ext}_url`];
@@ -138,14 +137,14 @@ const get_ogpcard = async (my, book_id, ext) => {
                       encoding);
 };
 
-const get_from_cache = async (my, book_id, get_file, ext) => {
+const get_from_cache = async (db, book_id, get_file, ext) => {
   const key = `${ext}${book_id}`;
-  const etag = await my.rc.get(key);
+  const etag = await rc.get(key);
   if (etag) {
-    return {text: await zlib_inflate(await my.rc.get(key+':d')), etag: etag};
+    return {text: await zlib_inflate(await rc.get(key+':d')), etag: etag};
   } else {
-    const data = await get_file(my, book_id, ext);
-    return await upload_content_data(my.rc, key, data);
+    const data = await get_file(db, book_id, ext);
+    return await upload_content_data(key, data);
   }
 };
 
@@ -156,20 +155,6 @@ const gen_etag = (data) => {
 //
 // make router and app
 //
-const connect_db = async () => {
-  let MongoClient = mongodb.MongoClient;
-  let db = await MongoClient.connect(mongo_url);
-  let my = {};
-  my.db = db;
-  my.books = db.collection('books');
-  my.authors = db.collection('authors');
-  my.persons = db.collection('persons');
-  my.workers = db.collection('workers');
-
-  my.rc = redis.createClient(redis_url, {return_buffers: true});
-
-  return my;
-};
 
 const content_type = {
   'txt': 'text/plain; charset=shift_jis',
@@ -188,52 +173,34 @@ const make_router = (app) => {
   // books
   //
   router.get('/books', async (ctx) => {
-    let req = ctx.request;
-    let query = {};
+    const req = ctx.request;
+    const query = {};
 
     if (req.query.title) {
       query.title = re_or_str(req.query.title);
     }
     if (req.query.author) {
-      let person = await app.my.persons.findOne (
+      const persons = await app.db.find_persons (
         {$where: `var author = "${req.query.author}"; this.last_name + this.first_name == author || this.last_name == author || this.first_name == author`});
-      if (!person) {
+      if (persons.length ==0) {
         ctx.status=404;
         return;
       }
-      query['authors.person_id'] = person.person_id;
+      query['authors.person_id'] = (await persons.toArray())[0].person_id;
     }
+
     if (req.query.after) {
       query.release_date = {'$gte': new Date(req.query.after)};
     }
 
-    let options = {
-      fields: {
-        _id: 0
-      }
-    };
-
-    if (req.query.sort) {
-      options.sort = JSON.parse(req.query.sort);
-    } else {
-      options.sort = {release_date: -1};
-    }
-
-    if (req.query.fields) {
-      req.query.fields.forEach((a) => {
-        options.fields[a] = 1;
-      });
-    }
-    if (req.query.limit) {
-      options.limit = parseInt(req.query.limit);
-    } else {
-      options.limit = DEFAULT_LIMIT;
-    }
+    const options = {};
+    options.sort = req.query.sort? JSON.parse(req.query.sort): {release_date: -1};
+    options.limit = req.query.limit? parseInt(req.query.limit): DEFAULT_LIMIT;
     if (req.query.skip) {
       options.skip = parseInt(req.query.skip);
     }
 
-    let docs = await app.my.books.find(query, options).toArray();
+    const docs = await app.db.find_books(query, options).toArray();
     if(docs) {
       return_json(ctx, docs);
     } else {
@@ -245,17 +212,12 @@ const make_router = (app) => {
   router.get('/books/:book_id', async (ctx, next) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let book_id = parseInt(ctx.params.book_id);
+    const book_id = parseInt(ctx.params.book_id);
     if (!book_id) {
       next();
       return;
     }
-    let options = {
-      fields: {
-        _id: 0
-      }
-    };
-    let doc = await app.my.books.findOne({book_id: book_id}, options);
+    const doc = await app.db.find_one_book(book_id);
     if (doc) {
       return_json(ctx, doc);
     } else {
@@ -267,9 +229,9 @@ const make_router = (app) => {
   router.get('/books/:book_id/card', async (ctx) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let book_id = parseInt(ctx.params.book_id);
+    const book_id = parseInt(ctx.params.book_id);
     try {
-      let res = await get_from_cache(app.my, book_id, get_ogpcard, 'card');
+      const res = await get_from_cache(app.db, book_id, get_ogpcard, 'card');
 
       ctx.status = 200;
       ctx.response.etag = res.etag;
@@ -291,11 +253,11 @@ const make_router = (app) => {
   router.get('/books/:book_id/content', async (ctx) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let book_id = parseInt(ctx.params.book_id);
+    const book_id = parseInt(ctx.params.book_id);
     const ext = ctx.query.format || 'txt';
     try {
       const get_file = get_file_method[ext];
-      const res = await get_from_cache(app.my, book_id, get_file, ext);
+      const res = await get_from_cache(app.db, book_id, get_file, ext);
 
       ctx.status = 200;
       ctx.response.etag = res.etag;
@@ -320,20 +282,14 @@ const make_router = (app) => {
   router.get('/persons', async (ctx) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let req = ctx.request;
-    let query = {};
+    const req = ctx.request;
+    const query = {};
 
     if (req.query.name) {
       query['$where'] = `var name = "${req.query.name}"; this.last_name + this.first_name == name || this.last_name == name || this.first_name == name`;
     }
 
-    let options = {
-      fields: {
-        _id: 0
-      }
-    };
-
-    let docs = await app.my.persons.find(query, options).toArray();
+    const docs = await app.db.find_persons(query).toArray();
     if(docs) {
       return_json(ctx, docs);
     } else {
@@ -345,17 +301,12 @@ const make_router = (app) => {
   router.get('/persons/:person_id', async (ctx, next) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let person_id = parseInt(ctx.params.person_id);
+    const person_id = parseInt(ctx.params.person_id);
     if (!person_id) {
       next();
       return;
     }
-    let options = {
-      fields: {
-        _id: 0
-      }
-    };
-    let doc = await app.my.persons.findOne({person_id: person_id}, options);
+    const doc = await app.db.find_one_person(person_id);
     if (doc) {
       return_json(ctx, doc);
     } else {
@@ -370,20 +321,14 @@ const make_router = (app) => {
   router.get('/workers', async (ctx) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let req = ctx.request;
-    let query = {};
+    const req = ctx.request;
+    const query = {};
 
     if (req.query.name) {
       query.name = re_or_str(req.query.name);
     }
 
-    let options = {
-      fields: {
-        _id: 0
-      }
-    };
-
-    let docs = await app.my.workers.find(query, options).toArray();
+    const docs = await app.db.find_workers(query).toArray();
     if(docs) {
       return_json(ctx, docs);
     } else {
@@ -395,17 +340,12 @@ const make_router = (app) => {
   router.get('/workers/:worker_id', async (ctx, next) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    let worker_id = parseInt(ctx.params.worker_id);
+    const worker_id = parseInt(ctx.params.worker_id);
     if (!worker_id) {
       next();
       return;
     }
-    let options = {
-      fields: {
-        _id: 0
-      }
-    };
-    let doc = await app.my.workers.findOne({id: worker_id}, options);
+    const doc = await app.db.find_one_worker(worker_id);
     if (doc) {
       return_json(ctx, doc);
     } else {
@@ -431,7 +371,8 @@ const make_app = async () => {
   app.use(morgan('combined', { stream: access_log}));
   app.use(koabody());
 
-  app.my = await connect_db();
+  app.db = new db.DB();
+  await app.db.connect();
 
   const router = make_router(app);
   app
