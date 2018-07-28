@@ -108,11 +108,11 @@ const get_zipped = async (db, book_id, _) => {
   const doc = await db.find_one_book(book_id, ['text_url']);
 
   const body = await rp.get(doc.text_url,
-                          { encoding: null,
-                            headers: {
-                              'User-Agent': 'Mozilla/5.0',
-                              'Accept': '*/*'
-                            }});
+                            { encoding: null,
+                              headers: {
+                                'User-Agent': 'Mozilla/5.0',
+                                'Accept': '*/*'
+                              }});
   const zip = await JSZip.loadAsync(body);
   const key = Object.keys(zip.files)[0]; // assuming zip has only one text entry
   return zip.file(key).async('nodebuffer');

@@ -222,7 +222,7 @@ test('app:books_card', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'text/html; charset=utf-8');
-  t.is(res.text.length, 8103);
+  t.is(res.text.length, 8733);
 
   res = await server
     .get(path)
@@ -320,8 +320,8 @@ test('app:persons_name', async t => {
   t.is(res.body[0].first_name_sort, 'うめたろう');
   t.is(res.body[0].last_name_roman, 'Suzuki');
   t.is(res.body[0].first_name_roman, 'Umetaro');
-  t.is(res.body[0].date_of_birth, '1874-04-07T00:00:00.000Z');
-  t.is(res.body[0].date_of_death, '1943-09-20T00:00:00.000Z');
+  t.is(res.body[0].date_of_birth, '1874-04-07');
+  t.is(res.body[0].date_of_death, '1943-09-20');
   t.is(res.body[0].author_copyright, false );
 
   res = await server
@@ -351,8 +351,8 @@ test('app:persons_name_by_id', async t => {
   t.is(res.body.first_name_sort, 'けいいち');
   t.is(res.body.last_name_roman, 'Aichi');
   t.is(res.body.first_name_roman, 'Keiichi');
-  t.is(res.body.date_of_birth, '1880-07-25T00:00:00.000Z');
-  t.is(res.body.date_of_death, '1923-06-23T00:00:00.000Z');
+  t.is(res.body.date_of_birth, '1880-07-25');
+  t.is(res.body.date_of_death, '1923-06-23');
   t.is(res.body.author_copyright, false);
 
   res = await server

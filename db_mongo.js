@@ -8,7 +8,7 @@ const mongodb_port = process.env.AOZORA_MONGODB_PORT || '27017';
 const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port}/aozora`;
 
 class DB {
-  async connect() {
+  connect() {
     return (mongodb.MongoClient).connect(mongo_url)
       .then((db) => {
         this.db = db;
