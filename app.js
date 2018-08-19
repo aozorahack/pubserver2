@@ -186,7 +186,7 @@ const make_router = (app) => {
         ctx.status=404;
         return;
       }
-      query['authors.person_id'] = (await persons.toArray())[0].person_id;
+      query['authors.person_id'] = { $in: (await persons.toArray()).map(e => e.person_id)};
     }
 
     if (req.query.after) {

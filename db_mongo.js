@@ -9,9 +9,9 @@ const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port
 
 class DB {
   connect() {
-    return (mongodb.MongoClient).connect(mongo_url)
-      .then((db) => {
-        this.db = db;
+    return (mongodb.MongoClient).connect(mongo_url, {useNewUrlParser: true})
+      .then((client) => {
+        this.db = client.db();
       });
   }
 
