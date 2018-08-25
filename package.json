@@ -14,9 +14,13 @@
   },
   "author": "Kenichi Sato <ksato9700@gmail.com>",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aozorahack/pubserver2.git"
+  },
   "dependencies": {
+    "@koa/cors": "2.2.2",
     "dotenv": "6.0.0",
-    "foreman": "3.0.1",
     "iconv-lite": "0.4.23",
     "jszip": "3.1.5",
     "koa": "2.5.2",

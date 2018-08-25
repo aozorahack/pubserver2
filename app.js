@@ -6,6 +6,7 @@ const morgan = require('koa-morgan');
 const koabody = require('koa-body');
 const compress = require('koa-compress');
 const Router = require('koa-router');
+const cors = require('@koa/cors');
 const Koa = require('koa');
 
 const db = require('./db_mongo');
@@ -367,6 +368,7 @@ const make_app = async () => {
   //
   // middleware
   //
+  app.use(cors());
   app.use(compress());
   app.use(morgan('combined', { stream: access_log}));
   app.use(koabody());
