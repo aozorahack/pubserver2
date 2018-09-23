@@ -361,7 +361,6 @@ const make_router = (app) => {
   router.get('/ranking/:type/:year/:month', async (ctx) => {
     console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
 
-    const req = ctx.request;
     const query = {
       year_month: ctx.params.year + '_' + ctx.params.month,
       type: ctx.params.type
