@@ -69,6 +69,7 @@ curl http://pubserver2.herokuapp.com/api/v0.1/persons
 ```
 
 追加パラメータ
+
  - `name`: 著者名・訳者名でのフィルタ
 
 
@@ -89,6 +90,17 @@ curl http://pubserver2.herokuapp.com/api/v0.1/workers
 ```
 curl http://pubserver2.herokuapp.com/api/v0.1/workers/{worker_id}
 ```
+
+#### ランキングデータの取得
+```
+curl http://pubserver2.herokuapp.com/api/v0.1/ranking/{type}/{year}/{month}/
+```
+
+パラメータ
+
+ - `type`: xhtml か txt のどちらかを指定
+ - `year`: 集計年(西暦)。2009年からのデータが残っている様です。
+ - `month`: 集計月 (01~12)
 
 ## DBにデータ登録するためのスクリプト
 

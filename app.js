@@ -187,7 +187,7 @@ const make_router = (app) => {
         ctx.status=404;
         return;
       }
-      query['authors.person_id'] = { $in: (await persons.toArray()).map(e => e.person_id)};
+      query['authors.person_id'] = { $in: (await persons).map(e => e.person_id)};
     }
 
     if (req.query.after) {
@@ -201,7 +201,7 @@ const make_router = (app) => {
       options.skip = parseInt(req.query.skip);
     }
 
-    const docs = await app.db.find_books(query, options).toArray();
+    const docs = await app.db.find_books(query, options);
     if(docs) {
       return_json(ctx, docs);
     } else {
@@ -290,7 +290,7 @@ const make_router = (app) => {
       query['$where'] = `var name = "${req.query.name}"; this.last_name + this.first_name == name || this.last_name == name || this.first_name == name`;
     }
 
-    const docs = await app.db.find_persons(query).toArray();
+    const docs = await app.db.find_persons(query);
     if(docs) {
       return_json(ctx, docs);
     } else {
@@ -329,7 +329,7 @@ const make_router = (app) => {
       query.name = re_or_str(req.query.name);
     }
 
-    const docs = await app.db.find_workers(query).toArray();
+    const docs = await app.db.find_workers(query);
     if(docs) {
       return_json(ctx, docs);
     } else {
@@ -349,6 +349,27 @@ const make_router = (app) => {
     const doc = await app.db.find_one_worker(worker_id);
     if (doc) {
       return_json(ctx, doc);
+    } else {
+      ctx.body = '';
+      ctx.status = 404;
+    }
+  });
+
+  //
+  // ranking
+  //
+  router.get('/ranking/:type/:year/:month', async (ctx) => {
+    console.log(decodeURIComponent(ctx.req.url)); // eslint-disable-line no-console
+
+    const req = ctx.request;
+    const query = {
+      year_month: ctx.params.year + '_' + ctx.params.month,
+      type: ctx.params.type
+    };
+
+    const docs = await app.db.find_ranking(query);
+    if(docs) {
+      return_json(ctx, docs);
     } else {
       ctx.body = '';
       ctx.status = 404;

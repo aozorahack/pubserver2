@@ -242,7 +242,7 @@ test('app:books_content_text', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'text/plain; charset=shift_jis');
-  t.is(res.text.length, 7982);
+  t.is(res.text.length, 7757);
 
   res = await server
     .get(path)
@@ -262,7 +262,7 @@ test('app:books_content_html', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'text/html; charset=shift_jis');
-  t.is(res.text.length, 14546);
+  t.is(res.text.length, 14328);
 
   res = await server
     .get(path)
@@ -433,4 +433,28 @@ test('app:workers_name_by_id', async t => {
 
   t.is(res.status, 304);
   t.is(res.text.length, 0);
+});
+
+test('app:ranking', async t => {
+  t.plan(10);
+
+  const path = '/api/v0.1/ranking/xhtml/2018/05/';
+  let res = await server
+      .get(path);
+
+  t.is(res.status, 200);
+  t.is(res.header['content-type'], 'application/json; charset=utf-8');
+  t.is(res.body.length, 500);
+  const ranking_1 = res.body[0];
+  t.is(ranking_1.book_id, 624);
+  t.is(ranking_1.access, 29323);
+  t.is(ranking_1.title, '山月記');
+  t.is(ranking_1.authors.length, 1);
+  t.is(ranking_1.authors[0], '中島 敦');
+
+  const ranking_104 = res.body[104];
+  t.is(ranking_104.book_id, 622);
+  t.is(ranking_104.access, 1167);
+
+
 });
