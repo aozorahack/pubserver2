@@ -93,7 +93,7 @@ curl http://pubserver2.herokuapp.com/api/v0.1/workers/{worker_id}
 
 #### ランキングデータの取得
 ```
-curl http://pubserver2.herokuapp.com/api/v0.1/ranking/{type}/{year}/{month}/
+curl http://pubserver2.herokuapp.com/api/v0.1/ranking/{type}/{year}/{month}
 ```
 
 パラメータ
