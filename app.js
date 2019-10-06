@@ -18,7 +18,9 @@ const rp = require('request-promise');
 const iconv = require('iconv-lite');
 const JSZip = require('jszip');
 
-const access_log= fs.createWriteStream('./access.log', { flags: 'a' });
+const access_log = fs.createWriteStream('./access.log', {
+  flags: 'a'
+});
 
 const redis_url = process.env.AOZORA_REDIS_URL || 'redis://127.0.0.1:6379';
 
@@ -43,7 +45,9 @@ const zlib_inflate = promisify(zlib.inflate);
 redis.RedisClient.prototype.setex = promisify(redis.RedisClient.prototype.setex);
 redis.RedisClient.prototype.get = promisify(redis.RedisClient.prototype.get);
 
-const rc = redis.createClient(redis_url, {return_buffers: true});
+const rc = redis.createClient(redis_url, {
+  return_buffers: true
+});
 
 //
 // utilities
@@ -71,25 +75,48 @@ const return_json = (ctx, doc) => {
   }
 };
 
+const return_error = (ctx, status) => {
+  ctx.body = '';
+  ctx.status = status;
+};
+
+const return_data = (ctx, text, ctype) => {
+  ctx.status = 200;
+  ctx.response.type = ctype;
+  ctx.body = text;
+};
+
+const return_null = (ctx, status) => {
+  ctx.body = null;
+  ctx.status = status;
+};
+
+const set_etag = (ctx, etag) => {
+  ctx.status = 200;
+  ctx.response.etag = etag;
+};
+
 const upload_content_data = async (key, data) => {
   const zdata = await zlib_deflate(data);
   const etag = gen_etag(zdata);
   await rc.setex(key + ':d', DATA_LIFETIME, zdata);
   await rc.setex(key, DATA_LIFETIME, etag);
-  return {text: data, etag: etag};
+  return {
+    text: data,
+    etag: etag
+  };
 };
 
-const add_ogp = (body, title, author)=> {
-  const ogp_headers =
-        ['<head prefix="og: http://ogp.me/ns#">',
-         '<meta name="twitter:card" content="summary" />',
-         '<meta property="og:type" content="book">',
-         '<meta property="og:image" content="http://www.aozora.gr.jp/images/top_logo.png">',
-         '<meta property="og:image:type" content="image/png">',
-         '<meta property="og:image:width" content="100">',
-         '<meta property="og:image:height" content="100">',
-         '<meta property="og:description" content="...">',
-         `<meta property="og:title" content="${title}(${author})"`].join('\n');
+const add_ogp = (body, title, author) => {
+  const ogp_headers = `<head prefix="og: http://ogp.me/ns#">
+<meta name="twitter:card" content="summary" />
+<meta property="og:type" content="book">
+<meta property="og:image" content="http://www.aozora.gr.jp/images/top_logo.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="100">
+<meta property="og:image:height" content="100">
+<meta property="og:description" content="...">
+<meta property="og:title" content="${title}(${author})"`;
 
   return body.replace(/<head>/, ogp_headers);
 };
@@ -108,41 +135,46 @@ const rel_to_abs_path = (body, ext) => {
 const get_zipped = async (db, book_id, _) => {
   const doc = await db.find_one_book(book_id, ['text_url']);
 
-  const body = await rp.get(doc.text_url,
-                            { encoding: null,
-                              headers: {
-                                'User-Agent': 'Mozilla/5.0',
-                                'Accept': '*/*'
-                              }});
+  const body = await rp.get(doc.text_url, {
+    encoding: null,
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Accept': '*/*'
+    }
+  });
   const zip = await JSZip.loadAsync(body);
   const key = Object.keys(zip.files)[0]; // assuming zip has only one text entry
   return zip.file(key).async('nodebuffer');
 };
 
 const get_ogpcard = async (db, book_id, ext) => {
-  const doc = await db.find_one_book(book_id,
-                                     {card_url: 1, html_url: 1,
-                                      title:1, authors: 1});
+  const doc = await db.find_one_book(book_id, {
+    card_url: 1,
+    html_url: 1,
+    title: 1,
+    authors: 1
+  });
   const ext_url = doc[`${ext}_url`];
-  const body = await rp.get(ext_url,
-                            { encoding: null,
-                              headers: {
-                                'User-Agent': 'Mozilla/5.0',
-                                'Accept': '*/*'
-                              }});
+  const body = await rp.get(ext_url, {
+    encoding: null,
+    headers: {
+      'User-Agent': 'Mozilla/5.0',
+      'Accept': '*/*'
+    }
+  });
   const encoding = encodings[ext];
   const author_name = doc.authors[0].last_name + doc.authors[0].first_name;
-  return iconv.encode(rel_to_abs_path(add_ogp(iconv.decode(body, encoding),
-                                              doc.title, author_name),
-                                      ext),
-                      encoding);
+  return iconv.encode(rel_to_abs_path(add_ogp(iconv.decode(body, encoding), doc.title, author_name), ext), encoding);
 };
 
 const get_from_cache = async (db, book_id, get_file, ext) => {
   const key = `${ext}${book_id}`;
   const etag = await rc.get(key);
   if (etag) {
-    return {text: await zlib_inflate(await rc.get(key+':d')), etag: etag};
+    return {
+      text: await zlib_inflate(await rc.get(key + ':d')),
+      etag: etag
+    };
   } else {
     const data = await get_file(db, book_id, ext);
     return await upload_content_data(key, data);
@@ -168,7 +200,9 @@ const get_file_method = {
 };
 
 const make_router = (app) => {
-  const router = new Router({prefix: API_ROOT});
+  const router = new Router({
+    prefix: API_ROOT
+  });
 
   //
   // books
@@ -181,32 +215,38 @@ const make_router = (app) => {
       query.title = re_or_str(req.query.title);
     }
     if (req.query.author) {
-      const persons = await app.db.find_persons (
-        {$where: `var author = "${req.query.author}"; this.last_name + this.first_name == author || this.last_name == author || this.first_name == author`});
-      if (persons.length ==0) {
-        ctx.status=404;
+      const persons = await app.db.find_persons({
+        $where: `var author = "${req.query.author}"; this.last_name + this.first_name == author || this.last_name == author || this.first_name == author`
+      });
+      if (persons.length == 0) {
+        return_error(ctx, 404);
         return;
       }
-      query['authors.person_id'] = { $in: (await persons).map(e => e.person_id)};
+      query['authors.person_id'] = {
+        $in: (await persons).map(e => e.person_id)
+      };
     }
 
     if (req.query.after) {
-      query.release_date = {'$gte': new Date(req.query.after)};
+      query.release_date = {
+        '$gte': new Date(req.query.after)
+      };
     }
 
     const options = {};
-    options.sort = req.query.sort? JSON.parse(req.query.sort): {release_date: -1};
-    options.limit = req.query.limit? parseInt(req.query.limit): DEFAULT_LIMIT;
+    options.sort = req.query.sort ? JSON.parse(req.query.sort) : {
+      release_date: -1
+    };
+    options.limit = req.query.limit ? parseInt(req.query.limit) : DEFAULT_LIMIT;
     if (req.query.skip) {
       options.skip = parseInt(req.query.skip);
     }
 
     const docs = await app.db.find_books(query, options);
-    if(docs) {
+    if (docs) {
       return_json(ctx, docs);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -222,8 +262,7 @@ const make_router = (app) => {
     if (doc) {
       return_json(ctx, doc);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -234,20 +273,15 @@ const make_router = (app) => {
     try {
       const res = await get_from_cache(app.db, book_id, get_ogpcard, 'card');
 
-      ctx.status = 200;
-      ctx.response.etag = res.etag;
-
+      set_etag(ctx, res.etag);
       if (ctx.fresh) {
-        ctx.status = 304;
-        ctx.body = null;
+        return_null(ctx, 304);
       } else {
-        ctx.response.type = 'text/html';
-        ctx.body = res.text;
+        return_data(ctx, res.text, 'text/html');
       }
     } catch (error) {
       console.error(error);
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(404);
     }
   });
 
@@ -260,20 +294,16 @@ const make_router = (app) => {
       const get_file = get_file_method[ext];
       const res = await get_from_cache(app.db, book_id, get_file, ext);
 
-      ctx.status = 200;
-      ctx.response.etag = res.etag;
+      set_etag(ctx, res.etag);
 
       if (ctx.fresh) {
-        ctx.status = 304;
-        ctx.body = null;
+        return_null(ctx, 304);
       } else {
-        ctx.response.type = content_type[ext] || 'application/octet-stream';
-        ctx.body = res.text;
+        return_data(ctx, res.text, content_type[ext] || 'application/octet-stream');
       }
     } catch (error) {
       console.error(error);
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(404);
     }
   });
 
@@ -291,11 +321,10 @@ const make_router = (app) => {
     }
 
     const docs = await app.db.find_persons(query);
-    if(docs) {
+    if (docs) {
       return_json(ctx, docs);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -311,8 +340,7 @@ const make_router = (app) => {
     if (doc) {
       return_json(ctx, doc);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -330,11 +358,10 @@ const make_router = (app) => {
     }
 
     const docs = await app.db.find_workers(query);
-    if(docs) {
+    if (docs) {
       return_json(ctx, docs);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -350,8 +377,7 @@ const make_router = (app) => {
     if (doc) {
       return_json(ctx, doc);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -367,11 +393,10 @@ const make_router = (app) => {
     };
 
     const docs = await app.db.find_ranking(query);
-    if(docs) {
+    if (docs) {
       return_json(ctx, docs);
     } else {
-      ctx.body = '';
-      ctx.status = 404;
+      return_error(ctx, 404);
     }
   });
 
@@ -390,7 +415,9 @@ const make_app = async () => {
   //
   app.use(cors());
   app.use(compress());
-  app.use(morgan('combined', { stream: access_log}));
+  app.use(morgan('combined', {
+    stream: access_log
+  }));
   app.use(koabody());
 
   app.db = new db.DB();
@@ -401,7 +428,10 @@ const make_app = async () => {
     .use(router.routes())
     .use(router.allowedMethods());
 
-  app.use(serve({rootDir: './public', rootPath: API_ROOT}));
+  app.use(serve({
+    rootDir: './public',
+    rootPath: API_ROOT
+  }));
   return app;
 };
 
