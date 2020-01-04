@@ -298,7 +298,7 @@ test('app:books_content_html', async t => {
 
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'text/html; charset=shift_jis');
-  t.is(res.text.length, 14546);
+  t.is(res.text.length, 14615);
 
   res = await server
     .get(path)

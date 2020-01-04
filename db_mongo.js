@@ -20,30 +20,32 @@ class DB {
   _find_one(collection, query, options) {
     options = options || {};
     if (Array.isArray(options.fields)) {
-      options.fields = Object.assign({
+      options.projection = Object.assign({
         _id: 0
       }, ...(options.fields || []).map(e => ({
         [e]: 1
       })));
     } else {
-      options.fields = options.fields || {};
-      options.fields._id = 0;
+      options.projection = options.fields || {};
+      options.projection._id = 0;
     }
+    delete options.fields;
     return collection.findOne(query, options);
   }
 
   _find_item(collection, query, options) {
     options = options || {};
     if (Array.isArray(options.fields)) {
-      options.fields = Object.assign({
+      options.projection = Object.assign({
         _id: 0
       }, ...(options.fields || []).map(e => ({
         [e]: 1
       })));
     } else {
-      options.fields = options.fields || {};
-      options.fields._id = 0;
+      options.projection = options.fields || {};
+      options.projection._id = 0;
     }
+    delete options.fields;
     return collection.find(query, options);
   }
 
@@ -81,7 +83,7 @@ class DB {
     const collection = 'ranking_' + query.type;
     delete query.type;
     options = {
-      fields: {
+      projection: {
         year_month: 0
       },
       sort: {

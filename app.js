@@ -432,6 +432,9 @@ const make_app = async () => {
     rootDir: './public',
     rootPath: API_ROOT
   }));
+
+  rc.flushall();
+
   return app;
 };
 
