@@ -14,7 +14,13 @@ const db = require('./db_mongo');
 require('dotenv').config();
 
 const redis = require('redis');
-const rp = require('request-promise');
+const axios = require('axios').create({
+  headers: {
+    'User-Agent': 'Mozilla/5.0',
+    'Accept': '*/*'
+  },
+  responseType: 'arraybuffer',
+});
 const iconv = require('iconv-lite');
 const JSZip = require('jszip');
 
@@ -135,13 +141,9 @@ const rel_to_abs_path = (body, ext) => {
 const get_zipped = async (db, book_id, _) => {
   const doc = await db.find_one_book(book_id, ['text_url']);
 
-  const body = await rp.get(doc.text_url, {
-    encoding: null,
-    headers: {
-      'User-Agent': 'Mozilla/5.0',
-      'Accept': '*/*'
-    }
-  });
+  const resp = await axios.get(doc.text_url);
+  // console.log(resp);
+  const body = resp.data;
   const zip = await JSZip.loadAsync(body);
   const key = Object.keys(zip.files)[0]; // assuming zip has only one text entry
   return zip.file(key).async('nodebuffer');
@@ -155,13 +157,8 @@ const get_ogpcard = async (db, book_id, ext) => {
     authors: 1
   });
   const ext_url = doc[`${ext}_url`];
-  const body = await rp.get(ext_url, {
-    encoding: null,
-    headers: {
-      'User-Agent': 'Mozilla/5.0',
-      'Accept': '*/*'
-    }
-  });
+  const resp = await axios.get(ext_url);
+  const body = resp.data;
   const encoding = encodings[ext];
   const author_name = doc.authors[0].last_name + doc.authors[0].first_name;
   return iconv.encode(rel_to_abs_path(add_ogp(iconv.decode(body, encoding), doc.title, author_name), ext), encoding);
