@@ -2,8 +2,8 @@
   "name": "pubserver2",
   "version": "0.1.0",
   "engines": {
-    "node": "10.16.3",
-    "npm": "6.9.0"
+    "node": "12.x",
+    "npm": "6.x"
   },
   "description": "Aozora API server with ES2017 + Koa.js",
   "scripts": {
@@ -24,23 +24,23 @@
   },
   "dependencies": {
     "@koa/cors": "3.0.0",
-    "dotenv": "8.1.0",
+    "dotenv": "8.2.0",
     "iconv-lite": "0.5.0",
     "jszip": "3.2.2",
-    "koa": "2.8.2",
+    "koa": "2.11.0",
     "koa-body": "4.1.1",
     "koa-compress": "3.0.0",
     "koa-morgan": "1.0.1",
     "koa-router": "7.4.0",
     "koa-static-server": "1.4.0",
-    "mongodb": "3.3.2",
+    "mongodb": "3.4.1",
     "redis": "2.8.0",
     "request": "^2.88.0",
-    "request-promise": "4.2.4",
+    "request-promise": "4.2.5",
     "supertest": "4.0.2"
   },
   "devDependencies": {
     "ava": "2.4.0",
-    "eslint": "6.5.1"
+    "eslint": "6.8.0"
   }
 }

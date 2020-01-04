@@ -1,6 +1,5 @@
 *.log
 node_modules/*
-package-lock.json
 .env
 .env.local
 .env.remote
