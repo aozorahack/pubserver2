@@ -1,6 +1,6 @@
 {
   "name": "pubserver2",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "engines": {
     "node": "12.x",
     "npm": "6.x"
@@ -34,7 +34,7 @@
     "koa-morgan": "1.0.1",
     "koa-router": "7.4.0",
     "koa-static-server": "1.4.0",
-    "mongodb": "3.4.1",
+    "mongodb": "3.6.3",
     "redis": "2.8.0",
     "supertest": "4.0.2"
   },

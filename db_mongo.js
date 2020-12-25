@@ -5,14 +5,24 @@ const mongodb = require('mongodb');
 const mongodb_credential = process.env.AOZORA_MONGODB_CREDENTIAL || '';
 const mongodb_host = process.env.AOZORA_MONGODB_HOST || 'localhost';
 const mongodb_port = process.env.AOZORA_MONGODB_PORT || '27017';
+const mongodb_replica_set = process.env.AOZORA_MONGODB_REPLICA_SET;
 const mongo_url = `mongodb://${mongodb_credential}${mongodb_host}:${mongodb_port}/aozora`;
 
 class DB {
   connect() {
-    return (mongodb.MongoClient).connect(mongo_url, {
+    const options = {
       useNewUrlParser: true,
       useUnifiedTopology: true
-    }).then((client) => {
+    };
+    if (mongodb_replica_set) {
+      options.ssl = true;
+      options.replicaSet = mongodb_replica_set;
+      options.authMechanism = 'SCRAM-SHA-1';
+      options.authSource = 'admin';
+    }
+    // console.log(mongo_url, options);
+
+    return (mongodb.MongoClient).connect(mongo_url, options).then((client) => {
       this.db = client.db();
     });
   }
