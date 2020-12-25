@@ -213,7 +213,11 @@ const make_router = (app) => {
     }
     if (req.query.author) {
       const persons = await app.db.find_persons({
-        $where: `var author = "${req.query.author}"; this.last_name + this.first_name == author || this.last_name == author || this.first_name == author`
+        $or: [
+          {'first_name': req.query.author},
+          {'last_name': req.query.author},
+          {'full_name': req.query.author}
+        ]
       });
       if (persons.length == 0) {
         return_error(ctx, 404);
@@ -314,7 +318,11 @@ const make_router = (app) => {
     const query = {};
 
     if (req.query.name) {
-      query['$where'] = `var name = "${req.query.name}"; this.last_name + this.first_name == name || this.last_name == name || this.first_name == name`;
+      query['$or'] = [
+        {'first_name': req.query.name},
+        {'last_name': req.query.name},
+        {'full_name': req.query.name}
+      ];
     }
 
     const docs = await app.db.find_persons(query);
