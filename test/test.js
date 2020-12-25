@@ -137,8 +137,8 @@ test('app:multiple_books_author_first_last_only', async t => {
   t.is(res.status, 200);
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.is(res.body.length, 100);
-  t.is(res.body[0].book_id, 59016);
-  t.is(res.body[0].title, '現代作家は古典をどうみるか');
+  t.is(res.body[0].book_id, 60159);
+  t.is(res.body[0].title, '四人');
 
   res = await server
     .get('/api/v0.1/books')
@@ -218,8 +218,8 @@ test('app:books_limit_skip', async t => {
   t.is(res.header['content-type'], 'application/json; charset=utf-8');
   t.true(res.body.length >= 5 && res.body.length <= 10);
 
-  t.is(res.body[0].book_id, 55773);
-  t.is(res.body[0].title, '「雪と花火」献辞');
+  t.is(res.body[0].book_id, 55753);
+  t.is(res.body[0].title, '雪と花火余言');
   t.is(res.body[0].release_date, '2017-02-12T00:00:00.000Z');
 
 });
