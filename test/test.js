@@ -1,8 +1,6 @@
-import test from 'ava';
-import request from 'supertest';
-import {
-  make_app
-} from '../app.js';
+const test = require('ava');
+const request = require('supertest');
+const {make_app} = require('../app.js');
 
 var server;
 
