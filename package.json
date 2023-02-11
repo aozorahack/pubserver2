@@ -39,7 +39,7 @@
     "supertest": "6.0.1"
   },
   "devDependencies": {
-    "ava": "3.14.0",
+    "ava": "5.2.0",
     "eslint": "7.16.0"
   }
 }
